@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Pressable,
 } from 'react-native';
 
 
@@ -111,6 +112,37 @@ export default function Index() {
     }
   };
   const [moneda, setMoneda] = useState(null);
+  const [pokeCoins, setPokeCoins] = useState(1000);
+  const [apuesta, setApuesta] = useState(100);
+  const [resultado, setResultado] = useState(null);
+  const [apostando, setApostando] = useState(false);
+
+  const apostar = () => {
+  if (apostando || apuesta <= 0 || apuesta > pokeCoins) return;
+
+  setApostando(true);
+  setResultado(null);
+
+  setTimeout(() => {
+    const gana = Math.random() < 0.45;
+
+    if (gana) {
+      setPokeCoins((saldo) => saldo + apuesta);
+      setResultado({
+        gana: true,
+        texto: `¡Ganaste ${apuesta * 2} PokéCoins! 🎉`,
+      });
+    } else {
+      setPokeCoins((saldo) => saldo - apuesta);
+      setResultado({
+        gana: false,
+        texto: `Perdiste ${apuesta} PokéCoins... 💀`,
+      });
+    }
+
+    setApostando(false);
+  }, 1000);
+};
 
   useEffect(() => {
     obtenerPokeDollars().then(setMoneda);
@@ -136,6 +168,76 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Mi Pokédex</Text>
+      <Text>
+        {moneda?.names?.find(
+          (item) => item.language.name === 'es'
+        )?.name ?? 'Poké Dollar'}
+      </Text>
+
+<View style={styles.casino}>
+  <Text style={styles.casinoTitle}>🎰 Casino Pokémon</Text>
+
+  <Text style={styles.saldoLabel}>TU SALDO</Text>
+  <Text style={styles.saldo}>
+    🪙 {pokeCoins.toLocaleString()} PokéCoins
+  </Text>
+
+  <Text style={styles.label}>¿Cuánto quieres apostar?</Text>
+
+  <View style={styles.apuestas}>
+    {[50, 100, 250, 500].map((cantidad) => (
+      <Pressable
+        key={cantidad}
+        style={[
+          styles.apuestaBtn,
+          apuesta === cantidad && styles.apuestaActiva,
+          cantidad > pokeCoins && styles.apuestaDeshabilitada,
+        ]}
+        disabled={cantidad > pokeCoins || apostando}
+        onPress={() => setApuesta(cantidad)}
+      >
+        <Text style={styles.apuestaTexto}>{cantidad}</Text>
+      </Pressable>
+    ))}
+  </View>
+
+  <Text style={styles.info}>
+    🎲 100% de probabilidad de ganar
+  </Text>
+
+  <Pressable
+    style={[
+      styles.jugarBtn,
+      (apostando || apuesta > pokeCoins || pokeCoins <= 0) &&
+        styles.apuestaDeshabilitada,
+    ]}
+    disabled={apostando || apuesta > pokeCoins || pokeCoins <= 0}
+    onPress={apostar}
+  >
+    <Text style={styles.jugarTexto}>
+      {apostando
+        ? '🎲 La ruleta está girando...'
+        : `APOSTAR ${apuesta} 🪙`}
+    </Text>
+  </Pressable>
+
+  {resultado && (
+    <Text
+      style={[
+        styles.resultado,
+        { color: resultado.gana ? '#50FA7B' : '#FF6B81' },
+      ]}
+    >
+      {resultado.texto}
+    </Text>
+  )}
+
+  {pokeCoins === 0 && (
+    <Text style={styles.info}>
+      💸 ¡Estás en bancarrota!
+    </Text>
+  )}
+</View>
 
       <FlatList
         data={pokemon}
@@ -169,11 +271,7 @@ export default function Index() {
             <Text>
               Reproducciones: {repeticiones} / 1000
             </Text>
-            <Text>
-              {moneda?.names?.find(
-                (item) => item.language.name === 'es'
-              )?.name ?? 'Poké Dollar'}
-            </Text>
+
           </View>
         )}
       />
@@ -224,4 +322,86 @@ const styles = StyleSheet.create({
     marginTop: 4,
     color: '#666',
   },
+  casino: {
+  marginTop: 24,
+  padding: 20,
+  borderRadius: 20,
+  backgroundColor: '#211D3B',
+  borderWidth: 2,
+  borderColor: '#FFD166',
+  alignItems: 'center',
+},
+casinoTitle: {
+  color: '#FFD166',
+  fontSize: 24,
+  fontWeight: '900',
+  marginBottom: 18,
+},
+saldoLabel: {
+  color: '#B9B3D9',
+  fontSize: 12,
+  letterSpacing: 3,
+},
+saldo: {
+  color: '#50FA7B',
+  fontSize: 25,
+  fontWeight: 'bold',
+  marginVertical: 12,
+},
+label: {
+  color: '#FFFFFF',
+  marginTop: 12,
+  marginBottom: 10,
+},
+apuestas: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  justifyContent: 'center',
+  gap: 8,
+},
+apuestaBtn: {
+  backgroundColor: '#383253',
+  paddingVertical: 10,
+  paddingHorizontal: 15,
+  borderRadius: 10,
+  borderWidth: 1,
+  borderColor: '#625A85',
+},
+apuestaActiva: {
+  backgroundColor: '#FFD166',
+  borderColor: '#FFD166',
+},
+apuestaDeshabilitada: {
+  opacity: 0.4,
+},
+apuestaTexto: {
+  color: '#FFFFFF',
+  fontWeight: 'bold',
+},
+info: {
+  color: '#B9B3D9',
+  fontSize: 13,
+  marginTop: 16,
+  textAlign: 'center',
+},
+jugarBtn: {
+  backgroundColor: '#FF5C8A',
+  paddingVertical: 15,
+  paddingHorizontal: 22,
+  borderRadius: 14,
+  marginTop: 18,
+  width: '100%',
+  alignItems: 'center',
+},
+jugarTexto: {
+  color: '#FFFFFF',
+  fontWeight: '900',
+  fontSize: 16,
+},
+resultado: {
+  fontSize: 17,
+  fontWeight: 'bold',
+  textAlign: 'center',
+  marginTop: 18,
+},
 });
