@@ -40,28 +40,28 @@ export default function Index() {
   const [ciclando, setCiclando] = useState(false);
   const [repeticiones, setRepeticiones] = useState(0);
 
-  const iniciarCiclo = async (item) => {
-    if (ciclando || !item.cries?.latest) return;
+  // const iniciarCiclo = async (item) => {
+  //   if (ciclando || !item.cries?.latest) return;
 
-    setCiclando(true);
-    setRepeticiones(0);
+  //   setCiclando(true);
+  //   setRepeticiones(0);
 
-    try {
-      for (let i = 1; i <= 1000; i++) {
-        player.replace({ uri: item.cries.latest });
-        player.play();
+  //   try {
+  //     for (let i = 1; i <= 1000; i++) {
+  //       player.replace({ uri: item.cries.latest });
+  //       player.play();
 
-        setRepeticiones(i);
+  //       setRepeticiones(i);
 
-        // Esperar 1 segundo antes de la siguiente repetición
-        await new Promise((resolve) => setTimeout(resolve, 670));
-      }
-    } catch (error) {
-      console.error('Error al reproducir:', error);
-    } finally {
-      setCiclando(false);
-    }
-  };
+  //       // Esperar 1 segundo antes de la siguiente repetición
+  //       await new Promise((resolve) => setTimeout(resolve, 670));
+  //     }
+  //   } catch (error) {
+  //     console.error('Error al reproducir:', error);
+  //   } finally {
+  //     setCiclando(false);
+  //   }
+  // };
   useEffect(() => {
     const obtenerPokemon = async () => {
       try {
@@ -97,24 +97,7 @@ export default function Index() {
     obtenerPokemon();
   }, []);
 
-  const obtenerPokeDollars = async () => {
-    try {
-      const response = await fetch(
-        'https://pokeapi.co/api/v2/currency/poke-dollar/'
-      );
 
-      if (!response.ok) {
-        throw new Error('Error al obtener Poké Dollars');
-      }
-
-      const data = await response.json();
-
-      return data;
-    } catch (error) {
-      console.error('Error al obtener la moneda:', error);
-      return null;
-    }
-  };
   const [moneda, setMoneda] = useState(null);
   const [pokeCoins, setPokeCoins] = useState(1000);
   const [apuesta, setApuesta] = useState(100);
@@ -148,9 +131,6 @@ export default function Index() {
     }, 1000);
   };
 
-  useEffect(() => {
-    // obtenerPokeDollars().then(setMoneda);
-  }, []);
 
   const obtenerDescripcion = async (pokemon) => {
     try {
@@ -245,7 +225,7 @@ export default function Index() {
               title="🔊 Escuchar"
               onPress={() => reproducirAudio(item)}
             />
-            <Button
+            {/* <Button
               title="🔁 Ciclo ×1000"
               onPress={() => {
                 iniciarCiclo(item);
@@ -253,7 +233,7 @@ export default function Index() {
                   Haptics.NotificationFeedbackType.Success
                 );
               }}
-            />
+            /> */}
             <Text>
               Reproducciones: {repeticiones} / 1000
             </Text>
