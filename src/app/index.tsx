@@ -1,6 +1,6 @@
 import { useAudioPlayer } from 'expo-audio';
 import { useEffect, useState } from 'react';
-
+import * as Haptics from 'expo-haptics';
 import {
   ActivityIndicator,
   Button,
@@ -19,7 +19,11 @@ export default function Index() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const player = useAudioPlayer(null);
-
+  const vibrar = async () => {
+    await Haptics.impactAsync(
+      Haptics.ImpactFeedbackStyle.Medium
+    );
+  };
 
   const reproducirAudio = (item) => {
     const audioUrl = item.cries?.latest;
@@ -116,7 +120,7 @@ export default function Index() {
   const [apuesta, setApuesta] = useState(100);
   const [resultado, setResultado] = useState(null);
   const [apostando, setApostando] = useState(false);
-
+  const [descripciones, setDescripciones] = useState({});
   const apostar = () => {
     if (apostando || apuesta <= 0 || apuesta > pokeCoins) return;
 
@@ -145,9 +149,44 @@ export default function Index() {
   };
 
   useEffect(() => {
-    obtenerPokeDollars().then(setMoneda);
+    // obtenerPokeDollars().then(setMoneda);
   }, []);
 
+  const obtenerDescripcion = async (pokemon) => {
+    try {
+      const response = await fetch(
+        `https://pokeapi.co/api/v2/pokemon-species/${pokemon.id}/`
+      );
+
+      if (!response.ok) {
+        throw new Error('Error al obtener la descripción');
+      }
+
+      const data = await response.json();
+
+      const entrada = data.flavor_text_entries.find(
+        (item) => item.language.name === 'es'
+      );
+
+      return entrada?.flavor_text
+        ?.replace(/\f|\n|\r/g, ' ')
+        ?? 'Descripción no disponible en español.';
+    } catch (error) {
+      console.error('Error al obtener la descripción:', error);
+      return 'No se pudo cargar la descripción.';
+    }
+  };
+
+  const cargarDescripcion = async (pokemon) => {
+    if (descripciones[pokemon.id]) return;
+
+    const descripcion = await obtenerDescripcion(pokemon);
+
+    setDescripciones((prev) => ({
+      ...prev,
+      [pokemon.id]: descripcion,
+    }));
+  };
   if (loading) {
     return (
       <View style={styles.center}>
@@ -197,13 +236,23 @@ export default function Index() {
             <Text style={styles.number}>
               N.º {item.id}
             </Text>
+
+
+            <Text style={styles.description}>
+              {descripciones[item.id] ?? ''}
+            </Text>
             <Button
               title="🔊 Escuchar"
               onPress={() => reproducirAudio(item)}
             />
             <Button
               title="🔁 Ciclo ×1000"
-              onPress={() => iniciarCiclo(item)}
+              onPress={() => {
+                iniciarCiclo(item);
+                Haptics.notificationAsync(
+                  Haptics.NotificationFeedbackType.Success
+                );
+              }}
             />
             <Text>
               Reproducciones: {repeticiones} / 1000
@@ -279,12 +328,12 @@ export default function Index() {
             </View>
           </View>
 
-  }
+        }
 
-      
-      
+
+
       />
-      
+
     </View >
   );
 }
