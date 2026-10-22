@@ -1,6 +1,8 @@
 import { useAudioPlayer } from 'expo-audio';
 import { useEffect, useState } from 'react';
 
+import { CameraView, useCameraPermissions } from 'expo-camera';
+
 import {
   ActivityIndicator,
   Button,
@@ -13,8 +15,10 @@ import {
 } from 'react-native';
 
 
+  // ... resto de tu código (tu estado de pokemon, casino, etc.)
 
 export default function Index() {
+  
   const [pokemon, setPokemon] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
