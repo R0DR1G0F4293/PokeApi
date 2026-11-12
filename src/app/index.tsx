@@ -1,68 +1,32 @@
+import { Link } from 'expo-router';
 import { useAudioPlayer } from 'expo-audio';
 import { useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import {
   ActivityIndicator,
-  Button,
   FlatList,
   Image,
+  Pressable,
   StyleSheet,
   Text,
   View,
-  Pressable,
 } from 'react-native';
-
-
 
 export default function Index() {
   const [pokemon, setPokemon] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [pokeCoins, setPokeCoins] = useState(1000);
+  const [apuesta, setApuesta] = useState(100);
+  const [resultado, setResultado] = useState(null);
+  const [apostando, setApostando] = useState(false);
+
   const player = useAudioPlayer(null);
-  const vibrar = async () => {
-    await Haptics.impactAsync(
-      Haptics.ImpactFeedbackStyle.Medium
-    );
-  };
 
-  const reproducirAudio = (item) => {
-    const audioUrl = item.cries?.latest;
-
-    if (!audioUrl) {
-      console.log('Este Pokémon no tiene audio disponible');
-      return;
-    }
-
-    player.replace({ uri: audioUrl });
-    player.play();
-  };
-
-  const [ciclando, setCiclando] = useState(false);
-  const [repeticiones, setRepeticiones] = useState(0);
-
-  // const iniciarCiclo = async (item) => {
-  //   if (ciclando || !item.cries?.latest) return;
-
-  //   setCiclando(true);
-  //   setRepeticiones(0);
-
-  //   try {
-  //     for (let i = 1; i <= 1000; i++) {
-  //       player.replace({ uri: item.cries.latest });
-  //       player.play();
-
-  //       setRepeticiones(i);
-
-  //       // Esperar 1 segundo antes de la siguiente repetición
-  //       await new Promise((resolve) => setTimeout(resolve, 670));
-  //     }
-  //   } catch (error) {
-  //     console.error('Error al reproducir:', error);
-  //   } finally {
-  //     setCiclando(false);
-  //   }
-  // };
   useEffect(() => {
+    let cancelado = false;
+
     const obtenerPokemon = async () => {
       try {
         const response = await fetch(
@@ -70,42 +34,76 @@ export default function Index() {
         );
 
         if (!response.ok) {
-          throw new Error('No se pudieron obtener los Pokémon');
+          throw new Error('No se pudieron obtener los Pokémon.');
         }
 
         const data = await response.json();
 
-        // Obtener los detalles de cada Pokémon
         const detalles = await Promise.all(
           data.results.map(async (item) => {
-            const res = await fetch(item.url);
-            if (!res.ok) {
-              throw new Error('Error al cargar un Pokémon');
+            const pokemonResponse = await fetch(item.url);
+
+            if (!pokemonResponse.ok) {
+              throw new Error('Error al cargar un Pokémon.');
             }
-            return await res.json();
+
+            const pokemonData = await pokemonResponse.json();
+            const speciesResponse = await fetch(pokemonData.species.url);
+
+            if (!speciesResponse.ok) {
+              throw new Error('Error al obtener la descripción.');
+            }
+
+            const speciesData = await speciesResponse.json();
+            const entrada = speciesData.flavor_text_entries.find(
+              (entry) => entry.language.name === 'es'
+            );
+
+            return {
+              ...pokemonData,
+              descripcion:
+                entrada?.flavor_text?.replace(/[\f\n\r]/g, ' ') ??
+                'Descripción no disponible en español.',
+            };
           })
         );
 
-        setPokemon(detalles);
+        if (!cancelado) {
+          setPokemon(detalles);
+        }
       } catch (err) {
-        setError(err.message);
+        if (!cancelado) {
+          setError(err.message || 'Ocurrió un error al cargar los Pokémon.');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelado) {
+          setLoading(false);
+        }
       }
     };
 
     obtenerPokemon();
+
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
+  const reproducirAudio = (item) => {
+    const audioUrl = item.cries?.latest;
 
-  const [moneda, setMoneda] = useState(null);
-  const [pokeCoins, setPokeCoins] = useState(1000);
-  const [apuesta, setApuesta] = useState(100);
-  const [resultado, setResultado] = useState(null);
-  const [apostando, setApostando] = useState(false);
-  const [descripciones, setDescripciones] = useState({});
+    if (!audioUrl) {
+      return;
+    }
+
+    player.replace({ uri: audioUrl });
+    player.play();
+  };
+
   const apostar = () => {
-    if (apostando || apuesta <= 0 || apuesta > pokeCoins) return;
+    if (apostando || apuesta <= 0 || apuesta > pokeCoins) {
+      return;
+    }
 
     setApostando(true);
     setResultado(null);
@@ -131,42 +129,6 @@ export default function Index() {
     }, 1000);
   };
 
-
-  const obtenerDescripcion = async (pokemon) => {
-    try {
-      const response = await fetch(
-        `https://pokeapi.co/api/v2/pokemon-species/${pokemon.id}/`
-      );
-
-      if (!response.ok) {
-        throw new Error('Error al obtener la descripción');
-      }
-
-      const data = await response.json();
-
-      const entrada = data.flavor_text_entries.find(
-        (item) => item.language.name === 'es'
-      );
-
-      return entrada?.flavor_text
-        ?.replace(/\f|\n|\r/g, ' ')
-        ?? 'Descripción no disponible en español.';
-    } catch (error) {
-      console.error('Error al obtener la descripción:', error);
-      return 'No se pudo cargar la descripción.';
-    }
-  };
-
-  const cargarDescripcion = async (pokemon) => {
-    if (descripciones[pokemon.id]) return;
-
-    const descripcion = await obtenerDescripcion(pokemon);
-
-    setDescripciones((prev) => ({
-      ...prev,
-      [pokemon.id]: descripcion,
-    }));
-  };
   if (loading) {
     return (
       <View style={styles.center}>
@@ -179,7 +141,7 @@ export default function Index() {
   if (error) {
     return (
       <View style={styles.center}>
-        <Text>{error}</Text>
+        <Text style={styles.error}>{error}</Text>
       </View>
     );
   }
@@ -187,134 +149,111 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Mi Pokédex</Text>
-      <Text>
-        {moneda?.names?.find(
-          (item) => item.language.name === 'es'
-        )?.name ?? 'Poké Dollar'}
-      </Text>
 
-
+      <Link href="/haptics" asChild>
+        <Pressable style={styles.hapticsLink}>
+          <Text style={styles.hapticsLinkText}>PROBAR HAPTICS</Text>
+        </Pressable>
+      </Link>
 
       <FlatList
         data={pokemon}
         keyExtractor={(item) => item.id.toString()}
         numColumns={2}
         contentContainerStyle={styles.list}
+        ListHeaderComponent={
+          <View style={styles.casino}>
+            <Text style={styles.casinoTitle}>Casino</Text>
+
+            <Text style={styles.saldoLabel}>TU DINERO</Text>
+            <Text style={styles.saldo}>
+              🪙 {pokeCoins.toLocaleString()} PokéCoins
+            </Text>
+
+            <Text style={styles.label}>¿Cuánto quieres apostar?</Text>
+
+            <View style={styles.apuestas}>
+              {[50, 100, 250, 500].map((cantidad) => (
+                <Pressable
+                  key={cantidad}
+                  style={[
+                    styles.apuestaBtn,
+                    apuesta === cantidad && styles.apuestaActiva,
+                    cantidad > pokeCoins && styles.apuestaDeshabilitada,
+                  ]}
+                  disabled={cantidad > pokeCoins || apostando}
+                  onPress={() => setApuesta(cantidad)}
+                >
+                  <Text style={styles.apuestaTexto}>{cantidad}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={styles.info}>
+              Probabilidad de ganar: 45%
+            </Text>
+
+            <Pressable
+              style={[
+                styles.jugarBtn,
+                (apostando || apuesta > pokeCoins || pokeCoins <= 0) &&
+                  styles.apuestaDeshabilitada,
+              ]}
+              disabled={
+                apostando || apuesta > pokeCoins || pokeCoins <= 0
+              }
+              onPress={apostar}
+            >
+              <Text style={styles.jugarTexto}>
+                {apostando
+                  ? '🎲 La ruleta está girando...'
+                  : `APOSTAR ${apuesta} 🪙`}
+              </Text>
+            </Pressable>
+
+            {resultado && (
+              <Text
+                style={[
+                  styles.resultado,
+                  { color: resultado.gana ? '#50a86b' : '#d94c60' },
+                ]}
+              >
+                {resultado.texto}
+              </Text>
+            )}
+
+            {pokeCoins === 0 && (
+              <Text style={styles.info}>💸 ¡Estás en bancarrota!</Text>
+            )}
+          </View>
+        }
         renderItem={({ item }) => (
           <View style={styles.card}>
             <Image
               source={{
-                uri: item.sprites.front_shiny,
+                uri:
+                  item.sprites?.front_shiny ??
+                  item.sprites?.front_default,
               }}
               style={styles.image}
             />
 
-            <Text style={styles.name}>
-              {item.name.toUpperCase()}
-            </Text>
+            <Text style={styles.name}>{item.name.toUpperCase()}</Text>
+            <Text style={styles.number}>N.º {item.id}</Text>
+            <Text style={styles.description}>{item.descripcion}</Text>
 
-            <Text style={styles.number}>
-              N.º {item.id}
-            </Text>
-
-
-            <Text style={styles.description}>
-              {descripciones[item.id] ?? ''}
-            </Text>
-            <Button
-              title="🔊 Escuchar"
-              onPress={() => reproducirAudio(item)}
-            />
-            {/* <Button
-              title="🔁 Ciclo ×1000"
-              onPress={() => {
-                iniciarCiclo(item);
-                Haptics.notificationAsync(
-                  Haptics.NotificationFeedbackType.Success
-                );
-              }}
-            /> */}
-            <Text>
-              Reproducciones: {repeticiones} / 1000
-            </Text>
-
+            {item.cries?.latest && (
+              <Pressable
+                style={styles.audioButton}
+                onPress={() => reproducirAudio(item)}
+              >
+                <Text style={styles.audioButtonText}>▶ Escuchar sonido</Text>
+              </Pressable>
+            )}
           </View>
         )}
-        ListHeaderComponent={
-          <View>
-            <View style={styles.casino}>
-              <Text style={styles.casinoTitle}> Casino </Text>
-
-              <Text style={styles.saldoLabel}>TU DINERO</Text>
-              <Text style={styles.saldo}>
-                🪙 {pokeCoins.toLocaleString()} PokéCoins
-              </Text>
-
-              <Text style={styles.label}>¿Cuánto quieres apostar?</Text>
-
-              <View style={styles.apuestas}>
-                {[50, 100, 250, 500].map((cantidad) => (
-                  <Pressable
-                    key={cantidad}
-                    style={[
-                      styles.apuestaBtn,
-                      apuesta === cantidad && styles.apuestaActiva,
-                      cantidad > pokeCoins && styles.apuestaDeshabilitada,
-                    ]}
-                    disabled={cantidad > pokeCoins || apostando}
-                    onPress={() => setApuesta(cantidad)}
-                  >
-                    <Text style={styles.apuestaTexto}>{cantidad}</Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              <Text style={styles.info}>
-                100% de probabilidad de ganar
-              </Text>
-
-              <Pressable
-                style={[
-                  styles.jugarBtn,
-                  (apostando || apuesta > pokeCoins || pokeCoins <= 0) &&
-                  styles.apuestaDeshabilitada,
-                ]}
-                disabled={apostando || apuesta > pokeCoins || pokeCoins <= 0}
-                onPress={apostar}
-              >
-                <Text style={styles.jugarTexto}>
-                  {apostando
-                    ? '🎲 La ruleta está girando...'
-                    : `APOSTAR ${apuesta} 🪙`}
-                </Text>
-              </Pressable>
-
-              {resultado && (
-                <Text
-                  style={[
-                    styles.resultado,
-                    { color: resultado.gana ? '#50FA7B' : '#FF6B81' },
-                  ]}
-                >
-                  {resultado.texto}
-                </Text>
-              )}
-
-              {pokeCoins === 0 && (
-                <Text style={styles.info}>
-                  💸 ¡Estás en bancarrota!
-                </Text>
-              )}
-            </View>
-          </View>
-
-        }
-
-
-
       />
-
-    </View >
+    </View>
   );
 }
 
@@ -330,12 +269,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 10,
+    padding: 24,
+  },
+  error: {
+    color: '#b00020',
+    textAlign: 'center',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   list: {
     paddingBottom: 20,
@@ -356,26 +300,35 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   number: {
     marginTop: 4,
     color: '#666',
   },
-
-
-
+  description: {
+    marginTop: 8,
+    color: '#555',
+    textAlign: 'center',
+    fontSize: 12,
+  },
+  audioButton: {
+    marginTop: 10,
+    padding: 8,
+  },
+  audioButtonText: {
+    color: '#C27C84',
+    fontWeight: '600',
+  },
   casino: {
-    marginTop: 24,
+    marginTop: 12,
+    marginBottom: 12,
     padding: 24,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#F0E5E5',
     alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
     elevation: 2,
   },
   casinoTitle: {
@@ -383,7 +336,6 @@ const styles = StyleSheet.create({
     fontSize: 23,
     fontWeight: '600',
     marginBottom: 20,
-    letterSpacing: 0.3,
   },
   saldoLabel: {
     color: '#A69A9A',
@@ -393,9 +345,10 @@ const styles = StyleSheet.create({
   },
   saldo: {
     color: '#C27C84',
-    fontSize: 29,
+    fontSize: 24,
     fontWeight: '700',
     marginVertical: 12,
+    textAlign: 'center',
   },
   label: {
     color: '#5F5555',
@@ -410,7 +363,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   apuestaBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#fff',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
@@ -445,7 +398,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   jugarTexto: {
-    color: '#FFFFFF',
+    color: '#fff',
     fontWeight: '600',
     fontSize: 14,
     letterSpacing: 1,
@@ -456,5 +409,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 18,
   },
-
+  hapticsLink: {
+    alignSelf: 'center',
+    marginBottom: 12,
+    paddingVertical: 8,
+  },
+  hapticsLinkText: {
+    color: '#C27C84',
+    fontSize: 16,
+    textDecorationLine: 'underline',
+  },
 });

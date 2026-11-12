@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera'
@@ -52,7 +53,12 @@ export default function HapticButton() {
           {openBack ? 'Cerrar cámara trasera' : 'Abrir cámara trasera'}
         </Text>
       </Pressable>
-
+          {/* <Link href="/haptics" asChild>
+            <Pressable style={styles.hapticsLink}>
+              <Text style={styles.hapticsLinkText}>REGRESAR A LA POKEDEX</Text>
+            </Pressable>
+          </Link> */}
+        
       {openBack && (
         <CameraView style={styles.camera} facing="back" />
       )}
@@ -61,7 +67,10 @@ export default function HapticButton() {
         <CameraView style={styles.camera} facing="front" />
       )}
     </View>
+    
   );
+
+
 }
 
 
@@ -87,6 +96,17 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 300,
   },
+  hapticsLink: {
+  alignSelf: 'center',
+  marginBottom: 12,
+  paddingVertical: 8,
+},
+hapticsLinkText: {
+  color: '#C27C84',
+  fontSize: 16,
+  textDecorationLine: 'underline',
+},
+
 
 });
 
