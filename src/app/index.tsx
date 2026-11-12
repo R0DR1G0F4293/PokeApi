@@ -30,7 +30,7 @@ export default function HapticButton() {
   };
 
   return (
-    <View style={styles.container}>
+    <View>
       <Pressable style={styles.button} onPress={handlePress}>
         <Text style={styles.text}>Vibrar</Text>
       </Pressable>
@@ -87,16 +87,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 300,
   },
-  button: {
-    backgroundColor: '#222',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  text: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+
 });
 
